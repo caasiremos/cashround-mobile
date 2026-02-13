@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/thousands_separator_input_formatter.dart';
 import '../../auth/screens/login_page.dart';
+import '../../auth/screens/profile_page.dart';
 import '../../auth/widgets/auth_form_widgets.dart';
 import '../../notifications/screens/notifications_page.dart';
 import '../../loans/screens/loans_terms_conditions_page.dart';
@@ -64,6 +65,18 @@ class DashboardPage extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            IconButton(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const ProfilePage(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.person_outline),
+                              color: AppColors.ancient,
+                              tooltip: 'Profile',
+                            ),
                             Badge(
                               isLabelVisible: true,
                               label: const Text(
