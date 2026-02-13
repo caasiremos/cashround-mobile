@@ -180,6 +180,7 @@ class DashboardPage extends StatelessWidget {
 }
 
 void _showDepositBottomSheet(BuildContext context) {
+  final phoneController = TextEditingController();
   final amountController = TextEditingController();
 
   showModalBottomSheet(
@@ -221,6 +222,15 @@ void _showDepositBottomSheet(BuildContext context) {
           ),
           const SizedBox(height: 24),
           TextFormField(
+            controller: phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: authInputDecoration(
+              hintText: 'Enter phone number',
+              prefixIcon: Icons.phone_outlined,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
             controller: amountController,
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -252,10 +262,14 @@ void _showDepositBottomSheet(BuildContext context) {
         ),
       ),
     ),
-  ).whenComplete(amountController.dispose);
+  ).whenComplete(() {
+    phoneController.dispose();
+    amountController.dispose();
+  });
 }
 
 void _showWithdrawBottomSheet(BuildContext context) {
+  final phoneController = TextEditingController();
   final amountController = TextEditingController();
 
   showModalBottomSheet(
@@ -297,6 +311,15 @@ void _showWithdrawBottomSheet(BuildContext context) {
           ),
           const SizedBox(height: 24),
           TextFormField(
+            controller: phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: authInputDecoration(
+              hintText: 'Enter phone number',
+              prefixIcon: Icons.phone_outlined,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
             controller: amountController,
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -328,7 +351,10 @@ void _showWithdrawBottomSheet(BuildContext context) {
         ),
       ),
     ),
-  ).whenComplete(amountController.dispose);
+  ).whenComplete(() {
+    phoneController.dispose();
+    amountController.dispose();
+  });
 }
 
 class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {

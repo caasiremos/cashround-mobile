@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../viewmodels/auth_viewmodel.dart';
 import '../widgets/auth_form_widgets.dart';
 import 'verify_email_page.dart';
 
@@ -31,16 +33,36 @@ class _RegistrationPageState extends State<RegistrationPage> {
     super.dispose();
   }
 
-  void _onSignUp() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => VerifyEmailPage(
-          email: _emailController.text.trim().isEmpty
-              ? 'your email'
-              : _emailController.text.trim(),
-        ),
-      ),
+  Future<void> _onSignUp() async {
+    if (!_formKey.currentState!.validate()) return;
+    final viewModel = context.read<AuthViewModel>();
+    final success = await viewModel.register(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      password: _passwordController.text,
     );
+    if (!mounted) return;
+    if (success) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => VerifyEmailPage(
+            email: _emailController.text.trim().isEmpty
+                ? 'your email'
+                : _emailController.text.trim(),
+          ),
+        ),
+      );
+    } else {
+      final message = viewModel.errorMessage ?? 'Registration failed';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
   }
 
   void _onLogin() {
@@ -196,17 +218,30 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     const SizedBox(height: 28),
 
                     // Sign up button
-                    FilledButton(
-                      onPressed: _onSignUp,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.ancient,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('Sign Up'),
+                    Consumer<AuthViewModel>(
+                      builder: (context, viewModel, _) {
+                        return FilledButton(
+                          onPressed: viewModel.isLoading ? null : _onSignUp,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.ancient,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: viewModel.isLoading
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.ancient,
+                                  ),
+                                )
+                              : const Text('Sign Up'),
+                        );
+                      },
                     ),
                     const SizedBox(height: 28),
 

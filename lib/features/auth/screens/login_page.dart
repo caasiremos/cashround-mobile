@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../viewmodels/auth_viewmodel.dart';
 import '../../dashboard/screens/dashboard_page.dart';
 import '../widgets/auth_form_widgets.dart';
 import 'registration_page.dart';
@@ -26,13 +28,30 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _onLogin() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const DashboardPage(),
-      ),
-      (route) => false,
+  Future<void> _onLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+    final viewModel = context.read<AuthViewModel>();
+    final success = await viewModel.login(
+      _emailController.text.trim(),
+      _passwordController.text,
     );
+    if (!mounted) return;
+    if (success) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const DashboardPage(),
+        ),
+        (route) => false,
+      );
+    } else {
+      final message = viewModel.errorMessage ?? 'Login failed';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
   }
 
   void _onForgotPassword() {
@@ -157,17 +176,30 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 24),
 
                     // Login button
-                    FilledButton(
-                      onPressed: _onLogin,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.ancient,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('Log In'),
+                    Consumer<AuthViewModel>(
+                      builder: (context, viewModel, _) {
+                        return FilledButton(
+                          onPressed: viewModel.isLoading ? null : _onLogin,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.ancient,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: viewModel.isLoading
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.ancient,
+                                  ),
+                                )
+                              : const Text('Log In'),
+                        );
+                      },
                     ),
                     const SizedBox(height: 32),
 
