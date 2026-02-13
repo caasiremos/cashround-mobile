@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
-import 'features/auth/screens/login_page.dart';
+import 'core/splash/app_initializer.dart';
 
 void main() {
   runApp(const CashRoundApp());
@@ -15,7 +15,7 @@ class CashRoundApp extends StatelessWidget {
     return MaterialApp(
       title: 'CashRound',
       theme: AppTheme.lightTheme,
-      home: const LoginPage(),
+      home: const AppInitializer(),
     );
   }
 }
