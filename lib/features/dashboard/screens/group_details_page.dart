@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../auth/widgets/auth_form_widgets.dart';
 import '../models/transaction_model.dart';
 import 'all_transactions_page.dart';
+import 'approve_otp_page.dart';
 
 class GroupDetailsPage extends StatefulWidget {
   const GroupDetailsPage({
@@ -180,8 +181,24 @@ class _TransferTab extends StatefulWidget {
   State<_TransferTab> createState() => _TransferTabState();
 }
 
+const String _currentUserPhoneMasked = '+254 *** *** 678';
+
 class _TransferTabState extends State<_TransferTab> {
   final Set<String> _approvedRoles = {'Chairperson'}; // Chairperson pre-approved for demo
+
+  Future<void> _startApproveFlow(BuildContext context, String role) async {
+    final verified = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => ApproveOtpPage(
+          maskedPhoneNumber: _currentUserPhoneMasked,
+          role: role,
+        ),
+      ),
+    );
+    if (context.mounted && verified == true) {
+      _approve(role);
+    }
+  }
 
   List<_MemberData> _getMembers() {
     final others = [
@@ -254,21 +271,21 @@ class _TransferTabState extends State<_TransferTab> {
               role: 'Chairperson',
               personName: widget.memberRoles['Chairperson'] ?? (members.isNotEmpty ? members[0].name : widget.admin),
               isApproved: _approvedRoles.contains('Chairperson'),
-              onApprove: () => _approve('Chairperson'),
+              onApprove: () => _startApproveFlow(context, 'Chairperson'),
             ),
             const SizedBox(height: 10),
             _ApprovalCard(
               role: 'Secretary',
               personName: widget.memberRoles['Secretary'] ?? (members.length > 1 ? members[1].name : 'Jane Smith'),
               isApproved: _approvedRoles.contains('Secretary'),
-              onApprove: () => _approve('Secretary'),
+              onApprove: () => _startApproveFlow(context, 'Secretary'),
             ),
             const SizedBox(height: 10),
             _ApprovalCard(
               role: 'Treasurer',
               personName: widget.memberRoles['Treasurer'] ?? (members.length > 2 ? members[2].name : 'Mike Johnson'),
               isApproved: _approvedRoles.contains('Treasurer'),
-              onApprove: () => _approve('Treasurer'),
+              onApprove: () => _startApproveFlow(context, 'Treasurer'),
             ),
           ],
           if (nextRecipient != null) ...[
