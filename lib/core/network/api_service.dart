@@ -2,10 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../constants/api_constants.dart';
+import '../storage/auth_storage.dart';
 import '../../features/auth/models/login_request.dart';
 import '../../features/auth/models/login_response.dart';
 import '../../features/auth/models/register_request.dart';
 import '../../features/auth/models/register_response.dart';
+import '../../features/auth/models/confirm_verification_code_request.dart';
+import '../../features/auth/models/confirm_verification_code_response.dart';
 
 /// Handles all HTTP communication with the backend.
 class ApiService {
@@ -22,6 +25,17 @@ class ApiService {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
+        },
+      ),
+    );
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final token = AuthStorage.accessToken;
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = '${AuthStorage.tokenType ?? 'Bearer'} $token';
+          }
+          handler.next(options);
         },
       ),
     );
@@ -57,6 +71,19 @@ class ApiService {
       data: request.toJson(),
     );
     return RegisterResponse.fromJson(
+      response.data ?? <String, dynamic>{},
+    );
+  }
+
+  /// POST member/confirm-verification-code — confirms email with code.
+  Future<ConfirmVerificationCodeResponse> confirmVerificationCode(
+    ConfirmVerificationCodeRequest request,
+  ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConstants.confirmVerificationCode,
+      data: request.toJson(),
+    );
+    return ConfirmVerificationCodeResponse.fromJson(
       response.data ?? <String, dynamic>{},
     );
   }

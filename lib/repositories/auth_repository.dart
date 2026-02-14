@@ -3,6 +3,8 @@ import '../features/auth/models/login_request.dart';
 import '../features/auth/models/login_response.dart';
 import '../features/auth/models/register_request.dart';
 import '../features/auth/models/register_response.dart';
+import '../features/auth/models/confirm_verification_code_request.dart';
+import '../features/auth/models/confirm_verification_code_response.dart';
 
 /// Repository for auth-related API calls and optional local persistence.
 class AuthRepository {
@@ -33,5 +35,14 @@ class AuthRepository {
       password: password,
     );
     return _apiService.register(request);
+  }
+
+  /// Calls POST member/confirm-verification-code. Throws on failure.
+  Future<ConfirmVerificationCodeResponse> confirmVerificationCode(
+    String email,
+    String code,
+  ) async {
+    final request = ConfirmVerificationCodeRequest(email: email, code: code);
+    return _apiService.confirmVerificationCode(request);
   }
 }

@@ -1,9 +1,11 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../core/constants/api_constants.dart';
+import '../core/network/api_error_helper.dart';
+import '../core/storage/auth_storage.dart';
 import '../features/auth/models/login_response.dart';
+import '../features/auth/models/member_model.dart';
 import '../features/auth/models/register_response.dart';
+import '../features/auth/models/confirm_verification_code_response.dart';
 import '../repositories/auth_repository.dart';
 
 class AuthViewModel extends ChangeNotifier {
@@ -16,11 +18,17 @@ class AuthViewModel extends ChangeNotifier {
   String? _errorMessage;
   LoginResponse? _loginResponse;
   RegisterResponse? _registerResponse;
+  ConfirmVerificationCodeResponse? _confirmVerificationCodeResponse;
+  MemberModel? _member;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   LoginResponse? get loginResponse => _loginResponse;
   RegisterResponse? get registerResponse => _registerResponse;
+  ConfirmVerificationCodeResponse? get confirmVerificationCodeResponse =>
+      _confirmVerificationCodeResponse;
+  MemberModel? get member => _member ?? AuthStorage.member;
+  bool get isLoggedIn => AuthStorage.isLoggedIn;
 
   Future<bool> login(String email, String password) async {
     _setLoading(true);
@@ -30,12 +38,27 @@ class AuthViewModel extends ChangeNotifier {
     try {
       final response = await _authRepository.login(email, password);
       _loginResponse = response;
+      _member = response.member;
+      if (response.accessToken.isNotEmpty) {
+        if (response.member != null) {
+          await AuthStorage.saveLogin(
+            response.accessToken,
+            response.member!,
+            tokenType: response.tokenType,
+          );
+        } else {
+          await AuthStorage.saveToken(
+            response.accessToken,
+            tokenType: response.tokenType,
+          );
+        }
+      }
       _setLoading(false);
       notifyListeners();
       return true;
     } catch (e) {
       _setLoading(false);
-      _setError(_messageFromException(e));
+      _setError(ApiErrorHelper.messageFromException(e));
       notifyListeners();
       return false;
     }
@@ -66,10 +89,37 @@ class AuthViewModel extends ChangeNotifier {
       return true;
     } catch (e) {
       _setLoading(false);
-      _setError(_messageFromException(e));
+      _setError(ApiErrorHelper.messageFromException(e));
       notifyListeners();
       return false;
     }
+  }
+
+  Future<bool> confirmVerificationCode(String email, String code) async {
+    _setLoading(true);
+    _clearError();
+    notifyListeners();
+
+    try {
+      final response =
+          await _authRepository.confirmVerificationCode(email, code);
+      _confirmVerificationCodeResponse = response;
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      _setError(ApiErrorHelper.messageFromException(e));
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> logout() async {
+    await AuthStorage.clear();
+    _member = null;
+    _loginResponse = null;
+    notifyListeners();
   }
 
   void clearError() {
@@ -89,23 +139,4 @@ class AuthViewModel extends ChangeNotifier {
     _errorMessage = null;
   }
 
-  static String _messageFromException(dynamic e) {
-    if (e is DioException) {
-      final status = e.response?.statusCode;
-      final data = e.response?.data;
-      if (data is Map && data['message'] != null) {
-        final msg = data['message'];
-        return msg is String ? msg : msg.toString();
-      }
-      if (status == 400 || status == 422) {
-        return 'Invalid input. Check your details and try again.';
-      }
-      if (status != null && status >= 500) return 'Server error. Please try again.';
-      if (e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.connectionTimeout) {
-        return 'Could not reach server. Check that ${ApiConstants.baseUrl} is reachable from this device (e.g. same network, or use your machine IP).';
-      }
-    }
-    return e is Exception ? e.toString() : e?.toString() ?? 'Something went wrong';
-  }
 }

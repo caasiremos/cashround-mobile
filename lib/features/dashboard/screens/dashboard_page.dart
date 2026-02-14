@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/thousands_separator_input_formatter.dart';
+import '../../../viewmodels/auth_viewmodel.dart';
 import '../../auth/screens/login_page.dart';
 import '../../auth/screens/profile_page.dart';
 import '../../auth/widgets/auth_form_widgets.dart';
@@ -103,7 +105,9 @@ class DashboardPage extends StatelessWidget {
                               ),
                             ),
                             IconButton(
-                              onPressed: () {
+                              onPressed: () async {
+                                await context.read<AuthViewModel>().logout();
+                                if (!context.mounted) return;
                                 Navigator.of(context).pushAndRemoveUntil(
                                   MaterialPageRoute(
                                     builder: (context) => const LoginPage(),
@@ -125,11 +129,16 @@ class DashboardPage extends StatelessWidget {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                    child: Text(
-                      '${_getGreeting()} ${_getGreetingEmoji()} User',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.ancient.withValues(alpha: 0.8),
-                          ),
+                    child: Consumer<AuthViewModel>(
+                      builder: (context, auth, _) {
+                        final name = auth.member?.firstName ?? 'User';
+                        return Text(
+                          '${_getGreeting()} ${_getGreetingEmoji()} $name',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.ancient.withValues(alpha: 0.8),
+                              ),
+                        );
+                      },
                     ),
                   ),
                 ),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../dashboard/screens/dashboard_page.dart';
+import '../../../viewmodels/auth_viewmodel.dart';
 import '../widgets/auth_form_widgets.dart';
+import 'login_page.dart';
 
 class VerifyEmailPage extends StatefulWidget {
   const VerifyEmailPage({
@@ -18,6 +20,7 @@ class VerifyEmailPage extends StatefulWidget {
 }
 
 class _VerifyEmailPageState extends State<VerifyEmailPage> {
+  final _formKey = GlobalKey<FormState>();
   final _codeController = TextEditingController();
 
   @override
@@ -26,13 +29,32 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
     super.dispose();
   }
 
-  void _onVerify() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const DashboardPage(),
-      ),
-      (route) => false,
+  Future<void> _onVerify() async {
+    if (!_formKey.currentState!.validate()) return;
+    final viewModel = context.read<AuthViewModel>();
+    final success = await viewModel.confirmVerificationCode(
+      widget.email,
+      _codeController.text.trim(),
     );
+    if (!mounted) return;
+    if (success) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const LoginPage(
+            successMessage:
+                'Account activated successfully, please login.',
+          ),
+        ),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? 'Verification failed'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
   }
 
   @override
@@ -54,7 +76,9 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
-              child: Column(
+              child: Form(
+                key: _formKey,
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -109,19 +133,42 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
                       hintText: 'Enter the 6-digit code',
                       prefixIcon: Icons.pin_outlined,
                     ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter the verification code';
+                      }
+                      if (value.trim().length != 6) {
+                        return 'Code must be 6 digits';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 28),
-                  FilledButton(
-                    onPressed: _onVerify,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.ancient,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Verify'),
+                  Consumer<AuthViewModel>(
+                    builder: (context, viewModel, _) {
+                      return FilledButton(
+                        onPressed:
+                            viewModel.isLoading ? null : _onVerify,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.ancient,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: viewModel.isLoading
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.ancient,
+                                ),
+                              )
+                            : const Text('Verify'),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -129,6 +176,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
           ),
         ),
       ),
+    ),
     );
   }
 }

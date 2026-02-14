@@ -9,7 +9,9 @@ import '../widgets/auth_form_widgets.dart';
 import 'registration_page.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({super.key, this.successMessage});
+
+  final String? successMessage;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -20,6 +22,22 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.successMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.successMessage!),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      });
+    }
+  }
 
   @override
   void dispose() {

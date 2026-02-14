@@ -5,4 +5,6 @@ class ApiConstants {
   static const String baseUrl = 'https://payment.theagrotracker.com/api/';
   static const String login = 'member/login';
   static const String register = 'member/register';
+  static const String confirmVerificationCode =
+      'member/confirm-verification-code';
 }

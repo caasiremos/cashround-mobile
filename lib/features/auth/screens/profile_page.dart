@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../viewmodels/auth_viewmodel.dart';
 import '../widgets/auth_form_widgets.dart';
 import 'login_page.dart';
 
@@ -13,10 +15,26 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  final _firstNameController = TextEditingController(text: 'John');
-  final _lastNameController = TextEditingController(text: 'Doe');
-  final _emailController = TextEditingController(text: 'john.doe@example.com');
-  final _phoneController = TextEditingController(text: '+254 712 345 678');
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  bool _loadedFromMember = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loadedFromMember) {
+      final member = context.read<AuthViewModel>().member;
+      if (member != null) {
+        _firstNameController.text = member.firstName;
+        _lastNameController.text = member.lastName;
+        _emailController.text = member.email;
+        _phoneController.text = member.phoneNumber ?? '';
+        _loadedFromMember = true;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -35,7 +53,9 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _onLogout() {
+  Future<void> _onLogout() async {
+    await context.read<AuthViewModel>().logout();
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (context) => const LoginPage(),
@@ -82,8 +102,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         radius: 48,
                         backgroundColor: AppColors.primary.withValues(alpha: 0.3),
                         child: Text(
-                          _firstNameController.text.isNotEmpty
-                              ? _firstNameController.text[0].toUpperCase()
+                          _firstNameController.text.trim().isNotEmpty
+                              ? _firstNameController.text.trim()[0].toUpperCase()
                               : '?',
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                 color: AppColors.ancient,
