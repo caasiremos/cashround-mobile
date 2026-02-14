@@ -42,7 +42,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       NotificationItem(
         id: '2',
         title: 'Payment received',
-        body: '₦ 5,000 received from Family Savings group.',
+        body: 'UGX 5,000 received from Family Savings group.',
         time: '1 hour ago',
         isRead: true,
       ),
@@ -56,7 +56,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       NotificationItem(
         id: '4',
         title: 'Transfer completed',
-        body: 'Your transfer of ₦ 2,500 to Trip Fund was successful.',
+        body: 'Your transfer of UGX 2,500 to Trip Fund was successful.',
         time: 'Yesterday',
         isRead: true,
       ),

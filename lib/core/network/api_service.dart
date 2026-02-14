@@ -9,6 +9,9 @@ import '../../features/auth/models/register_request.dart';
 import '../../features/auth/models/register_response.dart';
 import '../../features/auth/models/confirm_verification_code_request.dart';
 import '../../features/auth/models/confirm_verification_code_response.dart';
+import '../../features/dashboard/models/create_group_request.dart';
+import '../../features/dashboard/models/create_group_response.dart';
+import '../../features/dashboard/models/get_groups_response.dart';
 
 /// Handles all HTTP communication with the backend.
 class ApiService {
@@ -86,5 +89,39 @@ class ApiService {
     return ConfirmVerificationCodeResponse.fromJson(
       response.data ?? <String, dynamic>{},
     );
+  }
+
+  /// POST /groups — create a new group.
+  Future<CreateGroupResponse> createGroup(CreateGroupRequest request) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConstants.groups,
+      data: request.toJson(),
+    );
+    return CreateGroupResponse.fromJson(
+      response.data ?? <String, dynamic>{},
+    );
+  }
+
+  /// GET /groups — fetch groups list.
+  Future<GetGroupsResponse> getGroups() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiConstants.groups,
+    );
+    return GetGroupsResponse.fromJson(
+      response.data ?? <String, dynamic>{},
+    );
+  }
+
+  /// GET member/wallet-balance — returns balance number from response.data.
+  Future<num> getWalletBalance() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiConstants.walletBalance,
+    );
+    final raw = response.data;
+    if (raw is! Map<String, dynamic>) return 0;
+    final value = raw['data'];
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value) ?? 0;
+    return 0;
   }
 }

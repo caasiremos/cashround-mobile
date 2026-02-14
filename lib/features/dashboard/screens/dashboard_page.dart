@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logout_dialog.dart';
 import '../../../core/utils/thousands_separator_input_formatter.dart';
 import '../../../viewmodels/auth_viewmodel.dart';
+import '../../../viewmodels/group_viewmodel.dart';
 import '../../auth/screens/login_page.dart';
 import '../../auth/screens/profile_page.dart';
 import '../../auth/widgets/auth_form_widgets.dart';
@@ -40,11 +42,33 @@ class DashboardPage extends StatelessWidget {
     }
   }
 
+  Future<void> _onLogoutPressed(BuildContext context) async {
+    await showLogoutConfirmDialog(
+      context,
+      onConfirm: () async {
+        await context.read<AuthViewModel>().logout();
+        if (!context.mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const LoginPage(),
+          ),
+          (route) => false,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.secondary,
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _onLogoutPressed(context);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.secondary,
+        body: SafeArea(
         child: DefaultTabController(
           length: 3,
           child: NestedScrollView(
@@ -105,16 +129,7 @@ class DashboardPage extends StatelessWidget {
                               ),
                             ),
                             IconButton(
-                              onPressed: () async {
-                                await context.read<AuthViewModel>().logout();
-                                if (!context.mounted) return;
-                                Navigator.of(context).pushAndRemoveUntil(
-                                  MaterialPageRoute(
-                                    builder: (context) => const LoginPage(),
-                                  ),
-                                  (route) => false,
-                                );
-                              },
+                              onPressed: () => _onLogoutPressed(context),
                               icon: const Icon(Icons.logout),
                               color: AppColors.ancient,
                               tooltip: 'Log out',
@@ -144,10 +159,7 @@ class DashboardPage extends StatelessWidget {
                 ),
                 // Wallet balance card
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: _WalletBalanceCard(balance: '₦ 125,000.00'),
-                  ),
+                  child: _WalletBalanceSection(),
                 ),
                 // Tab bar
                 SliverPersistentHeader(
@@ -184,6 +196,7 @@ class DashboardPage extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -393,91 +406,154 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_SliverTabBarDelegate oldDelegate) => tabBar != oldDelegate.tabBar;
 }
 
-class _MyGroupsTab extends StatelessWidget {
+class _MyGroupsTab extends StatefulWidget {
+  @override
+  State<_MyGroupsTab> createState() => _MyGroupsTabState();
+}
+
+class _MyGroupsTabState extends State<_MyGroupsTab> {
+  bool _loadedOnce = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loadedOnce) {
+      _loadedOnce = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.read<GroupViewModel>().getGroups();
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final groups = [
-      _GroupData('Family Savings', '₦ 45,000', 5, 'John Doe'),
-      _GroupData('Office Lunch Fund', '₦ 12,500', 8, 'Jane Smith'),
-      _GroupData('Trip Fund', '₦ 78,000', 4, 'Mike Johnson'),
-    ];
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-      children: [
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const CreateNewGroupPage(),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+    return Consumer<GroupViewModel>(
+      builder: (context, viewModel, _) {
+        if (viewModel.isLoading && viewModel.groups.isEmpty) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          );
+        }
+        if (viewModel.errorMessage != null && viewModel.groups.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.add_circle_outline, color: AppColors.primary, size: 24),
-                  const SizedBox(width: 8),
                   Text(
-                    'Create new group',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    viewModel.errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.ancient.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => viewModel.getGroups(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.ancient,
+                    ),
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
             ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        ...groups.map((g) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _GroupListTile(
-              name: g.name,
-              balance: g.balance,
-              memberCount: g.memberCount,
-              admin: g.admin,
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => GroupDetailsPage(
-                      name: g.name,
-                      balance: g.balance,
-                      memberCount: g.memberCount,
-                      admin: g.admin,
+          );
+        }
+        final groups = viewModel.groups;
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  final result = await Navigator.of(context).push<String>(
+                    MaterialPageRoute(
+                      builder: (context) => const CreateNewGroupPage(),
+                    ),
+                  );
+                  if (!context.mounted) return;
+                  if (result != null && result.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result),
+                        backgroundColor: Colors.green.shade700,
+                      ),
+                    );
+                    context.read<GroupViewModel>().getGroups();
+                  }
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.5),
                     ),
                   ),
-                );
-              },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_circle_outline,
+                          color: AppColors.primary, size: 24),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Create new group',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          );
-        }),
-      ],
+            const SizedBox(height: 20),
+            ...groups.map((g) {
+              final admin = g.members.isNotEmpty
+                  ? g.members.first.displayName
+                  : '—';
+              final balanceStr = g.balance.isNotEmpty
+                  ? 'UGX ${g.balance}'
+                  : (g.wallet?.balance != null
+                      ? 'UGX ${g.wallet!.balance}'
+                      : 'UGX 0.00');
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _GroupListTile(
+                  name: g.name,
+                  balance: balanceStr,
+                  memberCount: g.memberCount,
+                  admin: admin,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => GroupDetailsPage(
+                          name: g.name,
+                          balance: balanceStr,
+                          memberCount: g.memberCount,
+                          admin: admin,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
-}
-
-class _GroupData {
-  _GroupData(this.name, this.balance, this.memberCount, this.admin);
-  final String name;
-  final String balance;
-  final int memberCount;
-  final String admin;
 }
 
 class _GroupListTile extends StatelessWidget {
@@ -848,6 +924,51 @@ class _TransactionListTile extends StatelessWidget {
                 ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WalletBalanceSection extends StatefulWidget {
+  @override
+  State<_WalletBalanceSection> createState() => _WalletBalanceSectionState();
+}
+
+class _WalletBalanceSectionState extends State<_WalletBalanceSection> {
+  bool _fetched = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_fetched) {
+      _fetched = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<AuthViewModel>().getWalletBalance();
+      });
+    }
+  }
+
+  static String _formatBalance(num value) {
+    final str = value.toStringAsFixed(2);
+    final parts = str.split('.');
+    final intPart = parts[0].replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
+    return 'UGX $intPart.${parts[1]}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Consumer<AuthViewModel>(
+        builder: (context, auth, _) {
+          final balanceStr = auth.walletBalance != null
+              ? _formatBalance(auth.walletBalance!)
+              : 'UGX 0.00';
+          return _WalletBalanceCard(balance: balanceStr);
+        },
       ),
     );
   }

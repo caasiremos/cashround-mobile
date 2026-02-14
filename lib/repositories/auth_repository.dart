@@ -45,4 +45,9 @@ class AuthRepository {
     final request = ConfirmVerificationCodeRequest(email: email, code: code);
     return _apiService.confirmVerificationCode(request);
   }
+
+  /// GET member/wallet-balance. Throws on failure.
+  Future<num> getWalletBalance() async {
+    return _apiService.getWalletBalance();
+  }
 }

@@ -10,9 +10,13 @@ class AuthStorage {
   static const _keyAccessToken = 'access_token';
   static const _keyTokenType = 'token_type';
   static const _keyMember = 'member';
+  static const _keySavedEmail = 'saved_email';
+  static const _keySavedPassword = 'saved_password';
 
   static String? get accessToken => _box.read<String>(_keyAccessToken);
   static String? get tokenType => _box.read<String>(_keyTokenType);
+  static String? get savedEmail => _box.read<String>(_keySavedEmail);
+  static String? get savedPassword => _box.read<String>(_keySavedPassword);
 
   static MemberModel? get member {
     final map = _box.read<Map<String, dynamic>>(_keyMember);
@@ -36,10 +40,18 @@ class AuthStorage {
     await _box.write(_keyMember, member.toJson());
   }
 
+  /// Saves email/password for prefill on next login. Called after successful login.
+  static Future<void> saveCredentials(String email, String password) async {
+    await _box.write(_keySavedEmail, email);
+    await _box.write(_keySavedPassword, password);
+  }
+
   static Future<void> clear() async {
     await _box.remove(_keyAccessToken);
     await _box.remove(_keyTokenType);
     await _box.remove(_keyMember);
+    await _box.remove(_keySavedEmail);
+    await _box.remove(_keySavedPassword);
   }
 
   static bool get isLoggedIn => accessToken != null && accessToken!.isNotEmpty;

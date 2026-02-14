@@ -20,6 +20,7 @@ class AuthViewModel extends ChangeNotifier {
   RegisterResponse? _registerResponse;
   ConfirmVerificationCodeResponse? _confirmVerificationCodeResponse;
   MemberModel? _member;
+  num? _walletBalance;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -29,6 +30,7 @@ class AuthViewModel extends ChangeNotifier {
       _confirmVerificationCodeResponse;
   MemberModel? get member => _member ?? AuthStorage.member;
   bool get isLoggedIn => AuthStorage.isLoggedIn;
+  num? get walletBalance => _walletBalance;
 
   Future<bool> login(String email, String password) async {
     _setLoading(true);
@@ -52,6 +54,7 @@ class AuthViewModel extends ChangeNotifier {
             tokenType: response.tokenType,
           );
         }
+        await AuthStorage.saveCredentials(email, password);
       }
       _setLoading(false);
       notifyListeners();
@@ -115,9 +118,23 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
+  /// GET member/wallet-balance. Updates [walletBalance]. Returns true on success.
+  Future<bool> getWalletBalance() async {
+    try {
+      _walletBalance = await _authRepository.getWalletBalance();
+      notifyListeners();
+      return true;
+    } catch (_) {
+      _walletBalance = null;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     await AuthStorage.clear();
     _member = null;
+    _walletBalance = null;
     _loginResponse = null;
     notifyListeners();
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logout_dialog.dart';
 import '../../../viewmodels/auth_viewmodel.dart';
 import '../widgets/auth_form_widgets.dart';
 import 'login_page.dart';
@@ -54,13 +55,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _onLogout() async {
-    await context.read<AuthViewModel>().logout();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const LoginPage(),
-      ),
-      (route) => false,
+    await showLogoutConfirmDialog(
+      context,
+      onConfirm: () async {
+        await context.read<AuthViewModel>().logout();
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const LoginPage(),
+          ),
+          (route) => false,
+        );
+      },
     );
   }
 

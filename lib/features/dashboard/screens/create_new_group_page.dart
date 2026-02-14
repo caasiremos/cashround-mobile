@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../viewmodels/group_viewmodel.dart';
 import '../../auth/widgets/auth_form_widgets.dart';
 
 class CreateNewGroupPage extends StatefulWidget {
@@ -19,6 +21,11 @@ class _CreateNewGroupPageState extends State<CreateNewGroupPage> {
 
   static const _frequencies = ['Daily', 'Weekly', 'Monthly'];
 
+  /// Maps UI frequency to API value (lowercase).
+  static String _frequencyToApi(String value) {
+    return value.toLowerCase();
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -27,10 +34,33 @@ class _CreateNewGroupPageState extends State<CreateNewGroupPage> {
     super.dispose();
   }
 
-  void _onCreate() {
-    if (_formKey.currentState?.validate() ?? false) {
-      // TODO: Create group and navigate back
-      Navigator.of(context).pop();
+  Future<void> _onCreate() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final viewModel = context.read<GroupViewModel>();
+    final amount = int.tryParse(
+      _amountController.text.replaceAll(RegExp(r'[^\d]'), ''),
+    ) ?? 0;
+    final response = await viewModel.createGroup(
+      name: _nameController.text.trim(),
+      description: _descriptionController.text.trim(),
+      frequency: _frequencyToApi(_selectedFrequency!),
+      amount: amount,
+    );
+    if (!mounted) return;
+    if (response != null) {
+      final message = response.metadata?.isNotEmpty == true
+          ? response.metadata!
+          : 'Group successfully created';
+      await context.read<GroupViewModel>().getGroups();
+      if (!mounted) return;
+      Navigator.of(context).pop(message);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? 'Failed to create group'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
     }
   }
 
@@ -160,17 +190,30 @@ class _CreateNewGroupPageState extends State<CreateNewGroupPage> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                FilledButton(
-                  onPressed: _onCreate,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.ancient,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Create group'),
+                Consumer<GroupViewModel>(
+                  builder: (context, viewModel, _) {
+                    return FilledButton(
+                      onPressed: viewModel.isLoading ? null : _onCreate,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.ancient,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: viewModel.isLoading
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.ancient,
+                              ),
+                            )
+                          : const Text('Create group'),
+                    );
+                  },
                 ),
               ],
             ),

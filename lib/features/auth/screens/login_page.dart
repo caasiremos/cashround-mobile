@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/storage/auth_storage.dart';
 import '../../../viewmodels/auth_viewmodel.dart';
 import '../../dashboard/screens/dashboard_page.dart';
 import '../widgets/auth_form_widgets.dart';
@@ -19,13 +20,19 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  late final TextEditingController _emailController;
+  late final TextEditingController _passwordController;
   bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
+    _emailController = TextEditingController(
+      text: AuthStorage.savedEmail ?? '',
+    );
+    _passwordController = TextEditingController(
+      text: AuthStorage.savedPassword ?? '',
+    );
     if (widget.successMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;

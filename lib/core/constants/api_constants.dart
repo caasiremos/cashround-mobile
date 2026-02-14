@@ -7,4 +7,6 @@ class ApiConstants {
   static const String register = 'member/register';
   static const String confirmVerificationCode =
       'member/confirm-verification-code';
+  static const String walletBalance = 'member/wallet-balance';
+  static const String groups = 'groups';
 }
