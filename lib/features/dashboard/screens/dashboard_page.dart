@@ -542,6 +542,8 @@ class _MyGroupsTabState extends State<_MyGroupsTab> {
                           balance: balanceStr,
                           memberCount: g.memberCount,
                           admin: admin,
+                          members: g.members,
+                          groupIdOrSlug: g.id?.toString() ?? g.slug,
                         ),
                       ),
                     );

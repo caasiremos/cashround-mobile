@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../viewmodels/group_viewmodel.dart';
 import '../../auth/widgets/auth_form_widgets.dart';
+import '../models/group_member_model.dart';
 import '../models/transaction_model.dart';
 import 'all_transactions_page.dart';
 import 'approve_otp_page.dart';
@@ -14,12 +17,18 @@ class GroupDetailsPage extends StatefulWidget {
     required this.balance,
     required this.memberCount,
     required this.admin,
+    this.members,
+    this.groupIdOrSlug,
   });
 
   final String name;
   final String balance;
   final int memberCount;
   final String admin;
+  /// When provided (e.g. from GET /groups), the Members tab shows these instead of mock data.
+  final List<GroupMemberModel>? members;
+  /// When provided, group wallet balance is fetched from GET /groups/{groupIdOrSlug}/wallet-balance.
+  final String? groupIdOrSlug;
 
   @override
   State<GroupDetailsPage> createState() => _GroupDetailsPageState();
@@ -32,6 +41,39 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
     'Secretary': 'Jane Smith',
     'Treasurer': 'Mike Johnson',
   };
+
+  num? _groupWalletBalance;
+  bool _loadingGroupBalance = false;
+  bool _fetchedGroupBalance = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.groupIdOrSlug != null && !_fetchedGroupBalance) {
+      _fetchedGroupBalance = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        setState(() => _loadingGroupBalance = true);
+        final viewModel = context.read<GroupViewModel>();
+        final balance = await viewModel.getGroupWalletBalance(widget.groupIdOrSlug!);
+        if (!mounted) return;
+        setState(() {
+          _loadingGroupBalance = false;
+          _groupWalletBalance = balance;
+        });
+      });
+    }
+  }
+
+  String _formatBalance(num value) {
+    final str = value.toStringAsFixed(2);
+    final parts = str.split('.');
+    final intPart = parts[0].replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
+    return 'UGX $intPart.${parts[1]}';
+  }
 
   void _assignRole(String role, String memberName) {
     setState(() {
@@ -103,13 +145,24 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          widget.balance,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: AppColors.ancient,
-                                fontWeight: FontWeight.bold,
+                        _loadingGroupBalance
+                            ? const SizedBox(
+                                height: 32,
+                                width: 32,
+                                child: CircularProgressIndicator(
+                                  color: AppColors.primary,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                _groupWalletBalance != null
+                                    ? _formatBalance(_groupWalletBalance!)
+                                    : widget.balance,
+                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                      color: AppColors.ancient,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                               ),
-                        ),
                       ],
                     ),
                   ),
@@ -150,6 +203,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> {
                     memberRoles: _memberRoles,
                     onAssignRole: _assignRole,
                     onRemoveRole: _removeRole,
+                    members: widget.members,
                   ),
                   _GroupTransactionsTab(
                     groupName: widget.name,
@@ -589,6 +643,7 @@ class _MembersTab extends StatelessWidget {
     required this.memberRoles,
     required this.onAssignRole,
     required this.onRemoveRole,
+    this.members,
   });
 
   final int memberCount;
@@ -596,6 +651,7 @@ class _MembersTab extends StatelessWidget {
   final Map<String, String> memberRoles;
   final void Function(String role, String memberName) onAssignRole;
   final void Function(String role) onRemoveRole;
+  final List<GroupMemberModel>? members;
 
   String? _getRoleForMember(String memberName) {
     for (final e in memberRoles.entries) {
@@ -606,13 +662,125 @@ class _MembersTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final members = _mockMembers(memberCount, admin);
+    final useApiMembers = members != null && members!.isNotEmpty;
+    final mockMembers = _mockMembers(memberCount, admin);
 
     return ListView.builder(
       padding: const EdgeInsets.all(24),
-      itemCount: members.length,
+      itemCount: useApiMembers ? members!.length : mockMembers.length,
       itemBuilder: (context, index) {
-        final m = members[index];
+        if (useApiMembers) {
+          final m = members![index];
+          final displayName = m.displayName;
+          final assignedRole = _getRoleForMember(displayName);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.ancient.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.ancient.withValues(alpha: 0.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.3),
+                  child: Text(
+                    displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      color: AppColors.ancient,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: AppColors.ancient,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      if (m.email != null && m.email!.isNotEmpty)
+                        Text(
+                          m.email!,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.ancient.withValues(alpha: 0.7),
+                              ),
+                        ),
+                      if (assignedRole != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            assignedRole,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.badge_outlined, color: AppColors.primary, size: 20),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Assign role',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ],
+                  ),
+                  tooltip: 'Assign role',
+                  color: AppColors.secondary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  onSelected: (value) {
+                    if (value == 'None') {
+                      if (assignedRole != null) onRemoveRole(assignedRole);
+                    } else {
+                      onAssignRole(value, displayName);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'Chairperson',
+                      child: Text('Chairperson', style: TextStyle(color: AppColors.ancient)),
+                    ),
+                    const PopupMenuItem(
+                      value: 'Secretary',
+                      child: Text('Secretary', style: TextStyle(color: AppColors.ancient)),
+                    ),
+                    const PopupMenuItem(
+                      value: 'Treasurer',
+                      child: Text('Treasurer', style: TextStyle(color: AppColors.ancient)),
+                    ),
+                    const PopupMenuItem(
+                      value: 'None',
+                      child: Text('Remove role', style: TextStyle(color: AppColors.ancient)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        final m = mockMembers[index];
         final assignedRole = _getRoleForMember(m.name);
 
         return Container(

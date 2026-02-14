@@ -14,6 +14,11 @@ class GroupRepository {
     return _apiService.getGroups();
   }
 
+  /// GET groups/{groupIdOrSlug}/wallet-balance. Throws on failure.
+  Future<num> getGroupWalletBalance(String groupIdOrSlug) async {
+    return _apiService.getGroupWalletBalance(groupIdOrSlug);
+  }
+
   /// POST /groups — creates a group. Throws on failure.
   Future<CreateGroupResponse> createGroup({
     required String name,

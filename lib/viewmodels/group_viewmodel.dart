@@ -39,6 +39,15 @@ class GroupViewModel extends ChangeNotifier {
     }
   }
 
+  /// GET groups/{idOrSlug}/wallet-balance. Returns balance or null on failure.
+  Future<num?> getGroupWalletBalance(String groupIdOrSlug) async {
+    try {
+      return await _repository.getGroupWalletBalance(groupIdOrSlug);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<CreateGroupResponse?> createGroup({
     required String name,
     required String description,

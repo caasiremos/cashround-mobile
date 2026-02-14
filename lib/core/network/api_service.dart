@@ -124,4 +124,16 @@ class ApiService {
     if (value is String) return num.tryParse(value) ?? 0;
     return 0;
   }
+
+  /// GET groups/{group}/wallet-balance — returns balance number from response.data.
+  Future<num> getGroupWalletBalance(String groupIdOrSlug) async {
+    final path = '${ApiConstants.groups}/$groupIdOrSlug/wallet-balance';
+    final response = await _dio.get<Map<String, dynamic>>(path);
+    final raw = response.data;
+    if (raw is! Map<String, dynamic>) return 0;
+    final value = raw['data'];
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value) ?? 0;
+    return 0;
+  }
 }
